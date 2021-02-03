@@ -1,7 +1,7 @@
 # StacktraceCompacter
-This utility class provides a way to have your stacktraces compacted (for instance all rows from hibernate will be packet into single one)
+Build status: ![Java CI with Maven](https://github.com/alebastrov/StacktraceCompacter/workflows/Java%20CI%20with%20Maven/badge.svg)
 
-so instead of this
+This utility class provides a way to have your stacktraces compacted (for instance all rows from hibernate will be packet into single one) so instead of this
 ~~~
 java.lang.IllegalArgumentException: Note
 	at com.nikondsl.utils.stacketrace.StacktraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
