@@ -80,3 +80,14 @@ Caused by: java.lang.IllegalStateException: keep off this
 	at com.intellij.rt.execution.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:242)
 	at com.intellij.rt.execution.junit.JUnitStarter.main(JUnitStarter.java:70)
   ~~~
+
+
+How to deal with it:
+~~~
+//catch an exception
+Exception ex = ...
+//create a compacter and pass the exception to it
+StacktraceCompacter shortener = new StacktraceCompacter(ex);
+//get stacktrace compacted and pass it to a logger
+log.warn("This opeation did not finish", shortener.generateString());
+~~~
