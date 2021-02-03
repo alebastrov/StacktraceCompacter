@@ -1,9 +1,9 @@
-package com.sdl.dxa.common.util;
+package com.nikondsl.utils.stacketrace;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,7 +15,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(MockitoJUnitRunner.class)
 public class StacktraceCompacterTest {
     private final StackTraceElement[] EMPTY = new StackTraceElement[0];
-    private StacktraceShortener shortener;
+    private StacktraceCompacter shortener;
 
     private StackTraceElement[] trace3 = new StackTraceElement[] {
             new StackTraceElement("org.apache.coyote.AbstractProcessorLight", "process", "AbstractProcessorLight.java", 66),
@@ -61,7 +61,7 @@ public class StacktraceCompacterTest {
     public void testFullStacktraceStartedNotFromCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace1);
-        shortener = new StacktraceShortener(cause);
+        shortener = new StacktraceCompacter(cause);
         String shortenedStacktrace = shortener.generateString();
 
         assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
@@ -76,7 +76,7 @@ public class StacktraceCompacterTest {
     public void testFullStacktraceStartedFromCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace2);
-        shortener = new StacktraceShortener(cause);
+        shortener = new StacktraceCompacter(cause);
         shortener.addRuleToBeLeftExpanded("SDL", new String[] {"com.sdl.", "org.dd4t."});
         String shortenedStacktrace = shortener.generateString();
 
@@ -87,7 +87,7 @@ public class StacktraceCompacterTest {
     public void testFullStacktraceOnlyCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace3);
-        shortener = new StacktraceShortener(cause);
+        shortener = new StacktraceCompacter(cause);
         String shortenedStacktrace = shortener.generateString();
 
         assertTrue(shortenedStacktrace.contains("TOMCAT"));
@@ -99,7 +99,7 @@ public class StacktraceCompacterTest {
             IllegalStateException ise = new IllegalStateException("keep off this");
             throw new IllegalArgumentException("Note", ise);
         } catch (Exception ex) {
-            shortener = new StacktraceShortener(ex);
+            shortener = new StacktraceCompacter(ex);
             ex.printStackTrace(System.err);
             System.err.println("=========");
             System.err.println(shortener.generateString());
