@@ -100,8 +100,6 @@ public class StacktraceCompacterTest {
             throw new IllegalArgumentException("Note", ise);
         } catch (Exception ex) {
             shortener = new StacktraceCompacter(ex);
-            ex.printStackTrace(System.err);
-            System.err.println("=========");
             System.err.println(shortener.generateString());
         }
     }

@@ -9,7 +9,7 @@ import java.util.Set;
 public class StacktraceCompacter {
     private static final int DEFAULT_LENGTH = 512;
     private final List<ProcessorRule> allRulesToCollapse = Arrays.asList(new ProcessorRule[] {
-            new ProcessorRule("-- REFLECTION", new String[] {"java.lang.reflect.", "sun.reflect."}),
+            new ProcessorRule("-- REFLECTION", new String[] {"java.lang.reflect.", "sun.reflect.", "jdk.internal.reflect."}),
             new ProcessorRule("-- TOMCAT", new String[]{"org.apache.catalina.", "org.apache.coyote.", "org.apache.tomcat."}),
             new ProcessorRule("-- WEBSPHERE", new String[] {"com.ibm.ws.", "com.ibm.websphere."}),
             new ProcessorRule("-- SPRING", "org.springframework."),
@@ -20,6 +20,8 @@ public class StacktraceCompacter {
             new ProcessorRule("-- MS SQL driver", "com.microsoft.sqlserver."),
             new ProcessorRule("-- MySQL driver", "com.mysql."),
             new ProcessorRule("-- Oracle driver", "oracle.jdbc."),
+            new ProcessorRule("-- JUnit", "org.junit."),
+            new ProcessorRule("-- Mockito", "org.mockito."),
     });
 
     private final List<ProcessorRule> allRulesToLeftExpanded = new ArrayList<>();
@@ -73,7 +75,7 @@ public class StacktraceCompacter {
         }
 
         void appendCompacted(StringBuilder result) {
-            result.append("\t   ").append(compactedName);
+            result.append("\t   ").append(compactedName).append("\n");
             setPrevious(false);
         }
 
@@ -107,7 +109,8 @@ public class StacktraceCompacter {
         result.append(throwable.toString()).append("\n");
         for (StackTraceElement element : throwable.getStackTrace()) {
             if (elementShouldBeExpanded(element)) {
-                result.append("\tat ").append(element.toString()).append("\n");
+                result.append("\tat ").append(element.toString());
+                result.append("\n");
                 continue;
             }
             boolean shouldSkip = false;
@@ -131,7 +134,8 @@ public class StacktraceCompacter {
                 }
                 continue;
             }
-            result.append("\tat ").append(element.toString()).append("\n");
+            result.append("\tat ").append(element.toString());
+            result.append("\n");
         }
         if (throwable.getCause() != null) {
             StacktraceCompacter innerShortener = new StacktraceCompacter(throwable.getCause());
@@ -170,13 +174,11 @@ public class StacktraceCompacter {
                 return true;
             }
         }
-        if (processorRule.prevRuleMet != null && processorRule.prevRuleMet) {
-            if (processorRule.counter > 1) {
-                result.append(" <").append(processorRule.counter).append(" lines>\n");
-            } else if (processorRule.counter == 1) {
-                result.append("\n");
-            }
-        }
+//        if (processorRule.prevRuleMet != null && processorRule.prevRuleMet) {
+//            if (processorRule.counter > 1) {
+//                result.append(" <").append(processorRule.counter).append(" lines>\n");
+//            }
+//        }
         return false;
     }
 }
