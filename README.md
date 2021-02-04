@@ -4,7 +4,7 @@ This utility class provides a way to have your stacktraces compacted (for instan
 so instead of this
 ~~~
 java.lang.IllegalArgumentException: Note
-	at com.nikondsl.utils.stacketrace.StacktraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
+	at com.nikondsl.utils.stacketrace.StackTraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
@@ -33,7 +33,7 @@ java.lang.IllegalArgumentException: Note
 	at com.intellij.rt.execution.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:242)
 	at com.intellij.rt.execution.junit.JUnitStarter.main(JUnitStarter.java:70)
 java.lang.IllegalStateException: keep off this
-	at com.nikondsl.utils.stacketrace.StacktraceCompacterTest.testExc(StacktraceCompacterTest.java:99)
+	at com.nikondsl.utils.stacketrace.StackTraceCompacterTest.testExc(StacktraceCompacterTest.java:99)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
@@ -60,7 +60,7 @@ java.lang.IllegalStateException: keep off this
   you will see in logs
   ~~~
   java.lang.IllegalArgumentException: Note
-	at com.nikondsl.utils.stacketrace.StacktraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
+	at com.nikondsl.utils.stacketrace.StackTraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
 	   -- REFLECTION
 	   -- JUnit
 	   -- Mockito
@@ -70,7 +70,7 @@ java.lang.IllegalStateException: keep off this
 	at com.intellij.rt.execution.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:242)
 	at com.intellij.rt.execution.junit.JUnitStarter.main(JUnitStarter.java:70)
 Caused by: java.lang.IllegalStateException: keep off this
-	at com.nikondsl.utils.stacketrace.StacktraceCompacterTest.testExc(StacktraceCompacterTest.java:99)
+	at com.nikondsl.utils.stacketrace.StackTraceCompacterTest.testExc(StacktraceCompacterTest.java:99)
 	   -- REFLECTION
 	   -- JUnit
 	   -- Mockito

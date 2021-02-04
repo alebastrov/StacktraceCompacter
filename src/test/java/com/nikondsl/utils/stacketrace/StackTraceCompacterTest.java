@@ -13,9 +13,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(MockitoJUnitRunner.class)
-public class StacktraceCompacterTest {
+public class StackTraceCompacterTest {
     private final StackTraceElement[] EMPTY = new StackTraceElement[0];
-    private StacktraceCompacter shortener;
+    private StackTraceCompacter shortener;
 
     private StackTraceElement[] trace3 = new StackTraceElement[] {
             new StackTraceElement("org.apache.coyote.AbstractProcessorLight", "process", "AbstractProcessorLight.java", 66),
@@ -61,7 +61,7 @@ public class StacktraceCompacterTest {
     public void testFullStacktraceStartedNotFromCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace1);
-        shortener = new StacktraceCompacter(cause);
+        shortener = new StackTraceCompacter(cause);
         String shortenedStacktrace = shortener.generateString();
 
         assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
@@ -76,7 +76,7 @@ public class StacktraceCompacterTest {
     public void testFullStacktraceStartedFromCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace2);
-        shortener = new StacktraceCompacter(cause);
+        shortener = new StackTraceCompacter(cause);
         shortener.addRuleToBeLeftExpanded("SDL", new String[] {"com.sdl.", "org.dd4t."});
         String shortenedStacktrace = shortener.generateString();
 
@@ -87,7 +87,7 @@ public class StacktraceCompacterTest {
     public void testFullStacktraceOnlyCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace3);
-        shortener = new StacktraceCompacter(cause);
+        shortener = new StackTraceCompacter(cause);
         String shortenedStacktrace = shortener.generateString();
 
         assertTrue(shortenedStacktrace.contains("TOMCAT"));
@@ -99,7 +99,7 @@ public class StacktraceCompacterTest {
             IllegalStateException ise = new IllegalStateException("keep off this");
             throw new IllegalArgumentException("Note", ise);
         } catch (Exception ex) {
-            shortener = new StacktraceCompacter(ex);
+            shortener = new StackTraceCompacter(ex);
             System.err.println(shortener.generateString());
         }
     }
