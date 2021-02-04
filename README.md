@@ -1,7 +1,7 @@
 # StacktraceCompacter
-This utility class provides a way to have your stacktraces compacted (for instance all rows from hibernate will be packet into single one)
+Build status: ![Java CI with Maven](https://github.com/alebastrov/StacktraceCompacter/workflows/Java%20CI%20with%20Maven/badge.svg)
 
-so instead of this
+This utility class provides a way to have your stacktraces compacted (for instance all rows from hibernate will be packet into single one) so instead of this
 ~~~
 java.lang.IllegalArgumentException: Note
 	at com.nikondsl.utils.stacketrace.StackTraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
@@ -80,3 +80,14 @@ Caused by: java.lang.IllegalStateException: keep off this
 	at com.intellij.rt.execution.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:242)
 	at com.intellij.rt.execution.junit.JUnitStarter.main(JUnitStarter.java:70)
   ~~~
+
+
+How to deal with it:
+~~~
+//catch an exception
+Exception ex = ...
+//create a compacter and pass the exception to it
+StacktraceCompacter shortener = new StacktraceCompacter(ex);
+//get stacktrace compacted and pass it to a logger
+log.warn("This opeation did not finish", shortener.generateString());
+~~~
