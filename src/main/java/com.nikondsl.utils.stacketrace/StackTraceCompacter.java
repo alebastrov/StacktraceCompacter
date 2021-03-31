@@ -30,9 +30,10 @@ public class StackTraceCompacter {
     });
 
     private Throwable currentException;
+    private String compactedBody;
     private final Stack<StackTraceHolder> stackTraceElements = new Stack<>();
     private final List<ProcessorRule> allRulesToLeftExpanded = new ArrayList<>();
-    private final ConcurrentMap<Throwable, AtomicInteger> collectedExceptions = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Integer, AtomicInteger> collectedExceptions = new ConcurrentHashMap<>();
 
     private static class StackTraceHolder {
         private StackTraceElement element;
@@ -83,17 +84,8 @@ public class StackTraceCompacter {
 
     public void init(Throwable throwable) {
         this.currentException = throwable;
-        AtomicInteger counterOfExceptionNew = new AtomicInteger(1);
-        AtomicInteger counterOfExceptionOld = collectedExceptions.putIfAbsent(throwable, counterOfExceptionNew);
-        if (counterOfExceptionOld != null) {
-            counterOfExceptionOld.incrementAndGet();
-            //remove everything collected
-            if (collectedExceptions.size() > 1000) {
-                collectedExceptions.clear();
-                collectedExceptions.put(currentException, counterOfExceptionNew);
-            }
-        }
         synchronized (this) {
+            stackTraceElements.clear();
             for (StackTraceElement element : throwable.getStackTrace()) {
                 StackTraceHolder last = stackTraceElements.isEmpty() ? null : stackTraceElements.peek();
                 String canonicalName = element.toString();
@@ -122,6 +114,17 @@ public class StackTraceCompacter {
                 if (noRuleMet) {
                     stackTraceElements.push(new StackTraceHolder(element));
                 }
+            }
+        }
+        compactedBody = generateString(false);
+        AtomicInteger counterOfExceptionNew = new AtomicInteger(1);
+        AtomicInteger counterOfExceptionOld = collectedExceptions.putIfAbsent(compactedBody.hashCode(), counterOfExceptionNew);
+        if (counterOfExceptionOld != null) {
+            counterOfExceptionOld.incrementAndGet();
+            //remove everything collected, 100 is enough
+            if (collectedExceptions.size() > 100) {
+                collectedExceptions.clear();
+                collectedExceptions.put(compactedBody.hashCode(), counterOfExceptionNew);
             }
         }
     }
@@ -173,7 +176,11 @@ public class StackTraceCompacter {
         }
     }
 
-    public synchronized String generateString() {
+    public String generateString() {
+        return generateString(true);
+    }
+
+    private synchronized String generateString(boolean generateHeader) {
         if (currentException == null) {
             return "No exception provided";
         }
@@ -184,15 +191,17 @@ public class StackTraceCompacter {
             return "No any stacktrace element provided";
         }
         StringBuilder result = new StringBuilder(DEFAULT_LENGTH);
-        int counter = collectedExceptions.getOrDefault(currentException, NUMBER_ONE).get();
-        if (counter == 1) {
-            result.append("Here's a compacted exception ('" + currentException.hashCode() + "')");
-        } else {
-            result.append("Exception ('" + currentException.hashCode() +
-                    "') has been thrown #" + counter + " times");
+        if (generateHeader) {
+            int counter = collectedExceptions.getOrDefault(compactedBody.hashCode(), NUMBER_ONE).get();
+            if (counter == 1) {
+                result.append("Here's a compacted exception ('" + compactedBody.hashCode() + "')");
+            } else {
+                result.append("Exception ('" + compactedBody.hashCode() +
+                        "') has been thrown #" + counter + " times");
+            }
+            result.append("\n");
         }
-
-        result.append("\n").append(currentException.toString()).append("\n");
+        result.append(currentException.toString()).append("\n");
 
         for (StackTraceHolder element : stackTraceElements) {
             result.append("\tat ").append(element.toString()).append("\n");

@@ -8,6 +8,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -112,17 +114,20 @@ public class StackTraceCompacterTest {
         causeFirst.setStackTrace(trace1);
         compacter = new StackTraceCompacter();
         compacter.init(causeFirst);
+        String shortenedStacktrace = compacter.generateString();
+        assertTrue(shortenedStacktrace.startsWith("Here's a compacted exception ('"));
+        //remember id
+        Matcher matcher = Pattern.compile(".*?\\('([+-]?\\d++)'\\).*").matcher(shortenedStacktrace);
+        String id = "";
+        if (matcher.find()) {
+            id = matcher.group(1);
+        }
+
         Exception causeSecond = new Exception();
         causeSecond.setStackTrace(trace1Same);
         compacter.init(causeSecond);
 
-        String shortenedStacktrace = compacter.generateString();
-
-        assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
-        assertFalse(shortenedStacktrace.contains("org.springframework"));
-
-        assertTrue(shortenedStacktrace.contains("SPRING"));
-        assertTrue(shortenedStacktrace.contains("REFLECTION"));
-        assertTrue(shortenedStacktrace.contains("TOMCAT"));
+        shortenedStacktrace = compacter.generateString();
+        assertTrue(shortenedStacktrace.startsWith("Exception ('"+id+"') has been thrown #2 times"));
     }
 }
