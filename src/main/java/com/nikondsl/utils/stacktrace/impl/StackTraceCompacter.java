@@ -1,4 +1,4 @@
-package com.nikondsl.utils.stacketrace;
+package com.nikondsl.utils.stacktrace.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -1,6 +1,6 @@
-package com.nikondsl.utils.stacketrace.factory;
+package com.nikondsl.utils.stacktrace.factory;
 
-import com.nikondsl.utils.stacketrace.StackTraceCompacter;
+import com.nikondsl.utils.stacktrace.impl.StackTraceCompacter;
 
 public class CompacterFactory {
     private StackTraceCompacter instance = create();
