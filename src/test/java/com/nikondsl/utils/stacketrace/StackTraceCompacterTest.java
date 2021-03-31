@@ -128,6 +128,6 @@ public class StackTraceCompacterTest {
         compacter.init(causeSecond);
 
         shortenedStacktrace = compacter.generateString();
-        assertTrue(shortenedStacktrace.startsWith("Exception ('"+id+"') has been thrown #2 times"));
+        assertTrue(shortenedStacktrace.startsWith("Exception ('" + id + "') has been thrown #2 times"));
     }
 }
