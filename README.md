@@ -59,6 +59,7 @@ java.lang.IllegalStateException: keep off this
   ~~~
   you will see in logs
   ~~~
+Here's a compacted exception('636226618')
   java.lang.IllegalArgumentException: Note
 	at com.nikondsl.utils.stacketrace.StackTraceCompacterTest.testExc(StacktraceCompacterTest.java:100)
 	   -- REFLECTION
@@ -82,12 +83,32 @@ Caused by: java.lang.IllegalStateException: keep off this
   ~~~
 
 
+Moreover if your exception is met in stacktrace several times, you may get it even more compacted!
+See (in case previous exception had been thrown before that one) below
+~~~
+Exception ('636226618') has been thrown #2 times: java.lang.IllegalArgumentException: Note
+~~~
+
 How to deal with it:
+
+You can compact an exception by doing
 ~~~
 //catch an exception
 Exception ex = ...
 //create a compacter and pass the exception to it
-StacktraceCompacter shortener = new StacktraceCompacter(ex);
+StacktraceCompacter shortener = CompacterFactory.create();
+shortener.init(ex);
+//get stacktrace compacted and pass it to a logger
+log.warn("This opeation did not finish", shortener.generateString());
+~~~
+
+or (in this case it also is able to compact the same exceptions with the single line)
+~~~
+//catch an exception
+Exception ex = ...
+//reuse a compacter and pass the exception to it
+StacktraceCompacter shortener = CompacterFactory.getInstance();
+shortener.init(ex);
 //get stacktrace compacted and pass it to a logger
 log.warn("This opeation did not finish", shortener.generateString());
 ~~~

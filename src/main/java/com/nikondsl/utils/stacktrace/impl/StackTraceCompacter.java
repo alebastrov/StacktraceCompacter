@@ -193,13 +193,16 @@ public class StackTraceCompacter {
         StringBuilder result = new StringBuilder(DEFAULT_LENGTH);
         if (generateHeader) {
             int counter = collectedExceptions.getOrDefault(compactedBody.hashCode(), NUMBER_ONE).get();
-            if (counter == 1) {
-                result.append("Here's a compacted exception ('" + compactedBody.hashCode() + "')");
-            } else {
+            if (counter != 1) {
                 result.append("Exception ('" + compactedBody.hashCode() +
-                        "') has been thrown #" + counter + " times");
+                        "') has been thrown #" + counter + " times: ");
+                result.append(currentException.toString()).append("\n");
+                return result.toString();
             }
+            result.append("Here's a compacted exception ('" + compactedBody.hashCode() + "')");
             result.append("\n");
+            result.append(compactedBody).append("\n");
+            return result.toString();
         }
         result.append(currentException.toString()).append("\n");
 
