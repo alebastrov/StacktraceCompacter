@@ -2,14 +2,17 @@ package com.nikondsl.utils.stacketrace;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class StackTraceCompacter {
     private static final int DEFAULT_LENGTH = 512;
+    private static final AtomicInteger NUMBER_ONE = new AtomicInteger(1);
     private final List<ProcessorRule> allRulesToCollapse = Arrays.asList(new ProcessorRule[] {
             new ProcessorRule("-- REFLECTION", new String[] {"java.lang.reflect.", "sun.reflect.", "jdk.internal.reflect."}),
             new ProcessorRule("-- TOMCAT", new String[]{"org.apache.catalina.", "org.apache.coyote.", "org.apache.tomcat."}),
@@ -19,14 +22,17 @@ public class StackTraceCompacter {
             new ProcessorRule("-- JACKSON", "com.fasterxml.jackson."),
             new ProcessorRule("-- ACTIVEMQ", "org.apache.activemq."),
             new ProcessorRule("-- HIBERNATE", "org.hibernate."),
-            new ProcessorRule("-- MS SQL driver", "com.microsoft.sqlserver."),
-            new ProcessorRule("-- MySQL driver", "com.mysql."),
-            new ProcessorRule("-- Oracle driver", "oracle.jdbc."),
+            new ProcessorRule("-- DB driver (MS SQL)", "com.microsoft.sqlserver."),
+            new ProcessorRule("-- DB driver (MySQL)", "com.mysql."),
+            new ProcessorRule("-- DB driver (Oracle)", "oracle.jdbc."),
             new ProcessorRule("-- JUnit", "org.junit."),
             new ProcessorRule("-- Mockito", "org.mockito."),
     });
 
+    private Throwable currentException;
+    private final Stack<StackTraceHolder> stackTraceElements = new Stack<>();
     private final List<ProcessorRule> allRulesToLeftExpanded = new ArrayList<>();
+    private final ConcurrentMap<Throwable, AtomicInteger> collectedExceptions = new ConcurrentHashMap<>();
 
     private static class StackTraceHolder {
         private StackTraceElement element;
@@ -58,27 +64,44 @@ public class StackTraceCompacter {
 
         @Override
         public String toString() {
-            if (compacted) {
-                if (counter > 1) {
-                    return "\t" + compactName + "\t<" + counter + " lines>";
-                }
-                return "\t" + compactName;
+            if (!compacted) {
+                return element.toString();
             }
-            return element.toString();
+            if (counter > 1) {
+                return "\t" + compactName + "\t<" + counter + " lines>";
+            }
+            return "\t" + compactName;
         }
     }
 
-    private Throwable throwable;
-    private final Stack<StackTraceHolder> stackTraceElements = new Stack<>();
+    public StackTraceCompacter() {
+    }
 
-    public StackTraceCompacter(Throwable throwable) {
-        this.throwable = throwable;
-        for (StackTraceElement element : throwable.getStackTrace()) {
-            StackTraceHolder last = stackTraceElements.isEmpty() ? null : stackTraceElements.peek();
-            String canonicalName = element.toString();
-            boolean noRuleMet = true;
-            for (ProcessorRule rule : allRulesToCollapse) {
-                if (rule.processCurrentLine(canonicalName)) {
+    public StackTraceCompacter(Throwable currentException) {
+        init(currentException);
+    }
+
+    public void init(Throwable throwable) {
+        this.currentException = throwable;
+        AtomicInteger counterOfExceptionNew = new AtomicInteger(1);
+        AtomicInteger counterOfExceptionOld = collectedExceptions.putIfAbsent(throwable, counterOfExceptionNew);
+        if (counterOfExceptionOld != null) {
+            counterOfExceptionOld.incrementAndGet();
+            //remove everything collected
+            if (collectedExceptions.size() > 1000) {
+                collectedExceptions.clear();
+                collectedExceptions.put(currentException, counterOfExceptionNew);
+            }
+        }
+        synchronized (this) {
+            for (StackTraceElement element : throwable.getStackTrace()) {
+                StackTraceHolder last = stackTraceElements.isEmpty() ? null : stackTraceElements.peek();
+                String canonicalName = element.toString();
+                boolean noRuleMet = true;
+                for (ProcessorRule rule : allRulesToCollapse) {
+                    if (!rule.processCurrentLine(canonicalName)) {
+                        continue;
+                    }
                     if (last != null &&
                         last.isCompacted() &&
                         last.ruleWhichMet == rule) {
@@ -96,9 +119,9 @@ public class StackTraceCompacter {
                     noRuleMet = false;
                     break;
                 }
-            }
-            if (noRuleMet) {
-                stackTraceElements.push(new StackTraceHolder(element));
+                if (noRuleMet) {
+                    stackTraceElements.push(new StackTraceHolder(element));
+                }
             }
         }
     }
@@ -150,23 +173,31 @@ public class StackTraceCompacter {
         }
     }
 
-    public String generateString() {
-        if (throwable == null) {
+    public synchronized String generateString() {
+        if (currentException == null) {
             return "No exception provided";
         }
-        if (throwable.getStackTrace() == null) {
+        if (currentException.getStackTrace() == null) {
             return "No stacktrace provided";
         }
-        if (throwable.getStackTrace().length == 0) {
+        if (currentException.getStackTrace().length == 0) {
             return "No any stacktrace element provided";
         }
         StringBuilder result = new StringBuilder(DEFAULT_LENGTH);
-        result.append(throwable.toString()).append("\n");
+        int counter = collectedExceptions.getOrDefault(currentException, NUMBER_ONE).get();
+        if (counter == 1) {
+            result.append("Here's a compacted exception ('" + currentException.hashCode() + "')");
+        } else {
+            result.append("Exception ('" + currentException.hashCode() +
+                    "') has been thrown #" + counter + " times");
+        }
+
+        result.append("\n").append(currentException.toString()).append("\n");
 
         for (StackTraceHolder element : stackTraceElements) {
             result.append("\tat ").append(element.toString()).append("\n");
         }
-        Throwable cause = throwable.getCause();
+        Throwable cause = currentException.getCause();
         while (cause != null) {
             StackTraceCompacter innerShortener = new StackTraceCompacter(cause);
             result.append("Caused by: \n");

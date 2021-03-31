@@ -15,7 +15,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(MockitoJUnitRunner.class)
 public class StackTraceCompacterTest {
     private final StackTraceElement[] EMPTY = new StackTraceElement[0];
-    private StackTraceCompacter shortener;
+    private StackTraceCompacter compacter;
 
     private StackTraceElement[] trace3 = new StackTraceElement[] {
             new StackTraceElement("org.apache.coyote.AbstractProcessorLight", "process", "AbstractProcessorLight.java", 66),
@@ -49,20 +49,22 @@ public class StackTraceCompacterTest {
     };
 
     private StackTraceElement[] trace1;
+    private StackTraceElement[] trace1Same;
 
     @Before
     public void setUp() {
         List<StackTraceElement> list = new ArrayList<>(Arrays.asList(trace2));
         list.add(new StackTraceElement("java.lang.Thread", "run", null, 0));
         trace1 = list.toArray(EMPTY);
+        trace1Same = list.toArray(EMPTY);
     }
 
     @Test
     public void testFullStacktraceStartedNotFromCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace1);
-        shortener = new StackTraceCompacter(cause);
-        String shortenedStacktrace = shortener.generateString();
+        compacter = new StackTraceCompacter(cause);
+        String shortenedStacktrace = compacter.generateString();
 
         assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
         assertFalse(shortenedStacktrace.contains("org.springframework"));
@@ -76,9 +78,9 @@ public class StackTraceCompacterTest {
     public void testFullStacktraceStartedFromCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace2);
-        shortener = new StackTraceCompacter(cause);
-        shortener.addRuleToBeLeftExpanded("SDL", new String[] {"com.sdl.", "org.dd4t."});
-        String shortenedStacktrace = shortener.generateString();
+        compacter = new StackTraceCompacter(cause);
+        compacter.addRuleToBeLeftExpanded("SDL", new String[] {"com.sdl.", "org.dd4t."});
+        String shortenedStacktrace = compacter.generateString();
 
         assertTrue(shortenedStacktrace.contains("TOMCAT"));
     }
@@ -87,8 +89,8 @@ public class StackTraceCompacterTest {
     public void testFullStacktraceOnlyCompactingThing() {
         Exception cause = new Exception();
         cause.setStackTrace(trace3);
-        shortener = new StackTraceCompacter(cause);
-        String shortenedStacktrace = shortener.generateString();
+        compacter = new StackTraceCompacter(cause);
+        String shortenedStacktrace = compacter.generateString();
 
         assertTrue(shortenedStacktrace.contains("TOMCAT"));
     }
@@ -99,8 +101,28 @@ public class StackTraceCompacterTest {
             IllegalStateException ise = new IllegalStateException("keep off this");
             throw new IllegalArgumentException("Note", ise);
         } catch (Exception ex) {
-            shortener = new StackTraceCompacter(ex);
-            System.err.println(shortener.generateString());
+            compacter = new StackTraceCompacter(ex);
+            System.err.println(compacter.generateString());
         }
+    }
+
+    @Test
+    public void testSameSacktraceHeader() {
+        Exception causeFirst = new Exception();
+        causeFirst.setStackTrace(trace1);
+        compacter = new StackTraceCompacter();
+        compacter.init(causeFirst);
+        Exception causeSecond = new Exception();
+        causeSecond.setStackTrace(trace1Same);
+        compacter.init(causeSecond);
+
+        String shortenedStacktrace = compacter.generateString();
+
+        assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
+        assertFalse(shortenedStacktrace.contains("org.springframework"));
+
+        assertTrue(shortenedStacktrace.contains("SPRING"));
+        assertTrue(shortenedStacktrace.contains("REFLECTION"));
+        assertTrue(shortenedStacktrace.contains("TOMCAT"));
     }
 }
