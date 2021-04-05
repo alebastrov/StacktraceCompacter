@@ -3,7 +3,7 @@ package com.nikondsl.utils.stacktrace.factory;
 import com.nikondsl.utils.stacktrace.impl.StackTraceCompacter;
 
 public class CompacterFactory {
-    private StackTraceCompacter instance = create();
+    private static StackTraceCompacter instance = create();
 
     /**
      * Use this method in order to create a new instance of compacter.
@@ -25,7 +25,7 @@ public class CompacterFactory {
      *
      * @return singleton instance.
      */
-    public StackTraceCompacter getInstance() {
+    public static StackTraceCompacter getInstance() {
         return instance;
     }
 }
