@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit;
  * USAGE:
  * LimitedFrequency lf=new LimitedFrequency(1000L);
  * if (lf.isTimePassed()) logger.info("some limited information to be logged once per second");
- * Created by inikonov on 9/16/2015.
  */
 public class LimitedFrequency implements Serializable {
     public static LimitedFrequency createOncePerSecond() {

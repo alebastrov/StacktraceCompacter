@@ -1,5 +1,6 @@
 package com.nikondsl.utils.stacktrace;
 
+import com.nikondsl.utils.stacktrace.factory.CompacterFactory;
 import com.nikondsl.utils.stacktrace.impl.StackTraceCompacter;
 import org.junit.Before;
 import org.junit.Test;

@@ -112,3 +112,8 @@ shortener.init(ex);
 //get stacktrace compacted and pass it to a logger
 log.warn("This opeation did not finish", shortener.generateString());
 ~~~
+
+Note: performance of this is pretty same as:
+~~~
+exception.printStackTrace(System.err);
+~~~
