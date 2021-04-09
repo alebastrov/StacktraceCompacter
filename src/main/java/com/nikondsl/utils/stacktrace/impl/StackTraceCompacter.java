@@ -1,7 +1,6 @@
 package com.nikondsl.utils.stacktrace.impl;
 
 import com.nikondsl.utils.stacktrace.utils.LimitedFrequency;
-import jdk.internal.joptsimple.internal.Strings;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,19 +24,20 @@ public class StackTraceCompacter {
     private static LimitedFrequency limitedFrequency = LimitedFrequency.createOncePerTenSeconds();
 
     private final List<ProcessorRule> allRulesToCollapse = Arrays.asList(new ProcessorRule[] {
-            new ProcessorRule("-- REFLECTION", new String[] {"java.lang.reflect.", "sun.reflect.", "jdk.internal.reflect."}),
-            new ProcessorRule("-- TOMCAT", new String[]{"org.apache.catalina.", "org.apache.coyote.", "org.apache.tomcat."}),
-            new ProcessorRule("-- WEBSPHERE", new String[] {"com.ibm.ws.", "com.ibm.websphere."}),
-            new ProcessorRule("-- SPRING", "org.springframework."),
-            new ProcessorRule("-- FREEMARKER CACHE", "freemarker.cache."),
-            new ProcessorRule("-- JACKSON", "com.fasterxml.jackson."),
-            new ProcessorRule("-- ACTIVEMQ", "org.apache.activemq."),
-            new ProcessorRule("-- HIBERNATE", "org.hibernate."),
+            new ProcessorRule("-- Reflection", new String[] {"java.lang.reflect.", "sun.reflect.", "jdk.internal.reflect."}),
+            new ProcessorRule("-- Tomcat", new String[]{"org.apache.catalina.", "org.apache.coyote.", "org.apache.tomcat."}),
+            new ProcessorRule("-- Websphere", new String[] {"com.ibm.ws.", "com.ibm.websphere."}),
+            new ProcessorRule("-- Spring", "org.springframework."),
+            new ProcessorRule("-- Freemarker", "freemarker."),
+            new ProcessorRule("-- Jackson", "com.fasterxml.jackson."),
+            new ProcessorRule("-- ActiveMQ", "org.apache.activemq."),
+            new ProcessorRule("-- Hibernate", "org.hibernate."),
             new ProcessorRule("-- DB driver (MS SQL)", "com.microsoft.sqlserver."),
             new ProcessorRule("-- DB driver (MySQL)", "com.mysql."),
             new ProcessorRule("-- DB driver (Oracle)", "oracle.jdbc."),
             new ProcessorRule("-- JUnit", "org.junit."),
             new ProcessorRule("-- Mockito", "org.mockito."),
+            new ProcessorRule("-- IntelliJ IDEA", "com.intellij."),
     });
 
     private Throwable currentException;
@@ -97,7 +97,7 @@ public class StackTraceCompacter {
         this.currentException = throwable;
         if (limitedFrequency.isTimePassed()) {
             //check if it's turned of
-            if (!Strings.isNullOrEmpty(System.getProperty("stacktrace.compacter.off"))) {
+            if (System.getProperty("stacktrace.compacter.off") != null) {
                 shouldNotCompact = true;
                 collectedExceptions.clear();
             } else {
@@ -245,10 +245,32 @@ public class StackTraceCompacter {
                 result.append(compactedBody).append("\n");
                 return result.toString();
             }
-            result.append(currentException.toString()).append("\n");
-
+            result.append(currentException.toString());
+            int lineLength = 0;
+            boolean compactedLine = false;
             for (StackTraceHolder element : stackTraceElements) {
-                result.append("\tat ").append(element.toString()).append("\n");
+                if (!element.isCompacted()) {
+                    result.append("\n\tat ").append(element);
+                    continue;
+                }
+                String append = element.toString();
+                if (lineLength == 0) {
+                    result.append("\n\tat ");
+                    lineLength += 4;
+                    if (!compactedLine) {
+                        result.append(append);
+                        lineLength += append.length();
+                    }
+                }
+                if (compactedLine) {
+                    result.append(append);
+                    lineLength += append.length();
+                }
+                compactedLine = element.isCompacted();
+                if (lineLength > 130) {
+                    compactedLine = false;
+                    lineLength = 0;
+                }
             }
             Throwable cause = currentException.getCause();
             while (cause != null) {

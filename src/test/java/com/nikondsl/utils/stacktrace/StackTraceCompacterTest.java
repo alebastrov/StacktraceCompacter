@@ -72,9 +72,9 @@ public class StackTraceCompacterTest {
         assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
         assertFalse(shortenedStacktrace.contains("org.springframework"));
 
-        assertTrue(shortenedStacktrace.contains("SPRING"));
-        assertTrue(shortenedStacktrace.contains("REFLECTION"));
-        assertTrue(shortenedStacktrace.contains("TOMCAT"));
+        assertTrue(shortenedStacktrace.contains("Spring"));
+        assertTrue(shortenedStacktrace.contains("Reflection"));
+        assertTrue(shortenedStacktrace.contains("Tomcat"));
     }
 
     @Test
@@ -85,7 +85,7 @@ public class StackTraceCompacterTest {
         compacter.addRuleToBeLeftExpanded("SDL", new String[] {"com.sdl.", "org.dd4t."});
         String shortenedStacktrace = compacter.generateString();
 
-        assertTrue(shortenedStacktrace.contains("TOMCAT"));
+        assertTrue(shortenedStacktrace.contains("Tomcat"));
     }
 
     @Test
@@ -95,7 +95,7 @@ public class StackTraceCompacterTest {
         compacter = new StackTraceCompacter(cause);
         String shortenedStacktrace = compacter.generateString();
 
-        assertTrue(shortenedStacktrace.contains("TOMCAT"));
+        assertTrue(shortenedStacktrace.contains("Tomcat"));
     }
 
     @Test
