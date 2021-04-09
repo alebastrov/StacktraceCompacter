@@ -1,7 +1,14 @@
 package com.nikondsl.utils.stacktrace.impl;
 
+import com.nikondsl.utils.stacktrace.utils.LimitedFrequency;
+import jdk.internal.joptsimple.internal.Strings;
+
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +20,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StackTraceCompacter {
     private static final int DEFAULT_LENGTH = 512;
     private static final AtomicInteger NUMBER_ONE = new AtomicInteger(1);
+
+    private volatile static boolean shouldNotCompact = false;
+    private static LimitedFrequency limitedFrequency = LimitedFrequency.createOncePerTenSeconds();
+
     private final List<ProcessorRule> allRulesToCollapse = Arrays.asList(new ProcessorRule[] {
             new ProcessorRule("-- REFLECTION", new String[] {"java.lang.reflect.", "sun.reflect.", "jdk.internal.reflect."}),
             new ProcessorRule("-- TOMCAT", new String[]{"org.apache.catalina.", "org.apache.coyote.", "org.apache.tomcat."}),
@@ -84,6 +95,19 @@ public class StackTraceCompacter {
 
     public void init(Throwable throwable) {
         this.currentException = throwable;
+        if (limitedFrequency.isTimePassed()) {
+            //check if it's turned of
+            if (!Strings.isNullOrEmpty(System.getProperty("stacktrace.compacter.off"))) {
+                shouldNotCompact = true;
+                collectedExceptions.clear();
+                synchronized (this) {
+                    stackTraceElements.clear();
+                }
+            }
+        }
+        if (shouldNotCompact) {
+            return;
+        }
         synchronized (this) {
             stackTraceElements.clear();
             for (StackTraceElement element : throwable.getStackTrace()) {
@@ -148,6 +172,10 @@ public class StackTraceCompacter {
         allRulesToLeftExpanded.add(new ProcessorRule(ruleName, rule));
     }
 
+    public List<ProcessorRule> getAllRules() {
+        return Collections.unmodifiableList(allRulesToLeftExpanded);
+    }
+
     private static class ProcessorRule {
         private final Set<String> rules;
         private final String compactedName;
@@ -180,46 +208,58 @@ public class StackTraceCompacter {
         return generateString(true);
     }
 
-    private synchronized String generateString(boolean generateHeader) {
-        if (currentException == null) {
-            return "No exception provided";
+    private String generateString(boolean generateHeader) {
+        if (shouldNotCompact) {
+            if (currentException == null) {
+                return null;
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            PrintStream stream = new PrintStream(new BufferedOutputStream(out));
+            currentException.printStackTrace(stream);
+            currentException = null;
+            return out.toString();
         }
-        if (currentException.getStackTrace() == null) {
-            return "No stacktrace provided";
-        }
-        if (currentException.getStackTrace().length == 0) {
-            return "No any stacktrace element provided";
-        }
-        StringBuilder result = new StringBuilder(DEFAULT_LENGTH);
-        if (generateHeader) {
-            int counter = collectedExceptions.getOrDefault(compactedBody.hashCode(), NUMBER_ONE).get();
-            if (counter != 1) {
-                result.append("Exception ('" + compactedBody.hashCode() +
-                        "') has been thrown #" + counter + " times: ");
-                result.append(currentException.toString()).append("\n");
+        synchronized (this) {
+            if (currentException == null) {
+                return "No exception provided";
+            }
+            if (currentException.getStackTrace() == null) {
+                return "No stacktrace provided";
+            }
+            if (currentException.getStackTrace().length == 0) {
+                return "No any stacktrace element provided";
+            }
+            StringBuilder result = new StringBuilder(DEFAULT_LENGTH);
+            if (generateHeader) {
+                int counter = collectedExceptions.getOrDefault(compactedBody.hashCode(), NUMBER_ONE).get();
+                if (counter != 1) {
+                    result.append("Exception ('" + compactedBody.hashCode() +
+                            "') has been thrown #" + counter + " times: ");
+                    result.append(currentException.toString()).append("\n");
+                    return result.toString();
+                }
+                result.append("Here's a compacted exception ('" + compactedBody.hashCode() + "')");
+                result.append("\n");
+                result.append(compactedBody).append("\n");
                 return result.toString();
             }
-            result.append("Here's a compacted exception ('" + compactedBody.hashCode() + "')");
-            result.append("\n");
-            result.append(compactedBody).append("\n");
+            result.append(currentException.toString()).append("\n");
+
+            for (StackTraceHolder element : stackTraceElements) {
+                result.append("\tat ").append(element.toString()).append("\n");
+            }
+            Throwable cause = currentException.getCause();
+            while (cause != null) {
+                StackTraceCompacter innerShortener = new StackTraceCompacter(cause);
+                result.append("Caused by: \n");
+                String inner = innerShortener.generateString();
+                result.append(inner);
+                if (cause == cause.getCause()) {
+                    break;
+                }
+                cause = cause.getCause();
+            }
             return result.toString();
         }
-        result.append(currentException.toString()).append("\n");
-
-        for (StackTraceHolder element : stackTraceElements) {
-            result.append("\tat ").append(element.toString()).append("\n");
-        }
-        Throwable cause = currentException.getCause();
-        while (cause != null) {
-            StackTraceCompacter innerShortener = new StackTraceCompacter(cause);
-            result.append("Caused by: \n");
-            String inner = innerShortener.generateString();
-            result.append(inner);
-            if (cause == cause.getCause()) {
-                break;
-            }
-            cause = cause.getCause();
-        }
-        return result.toString();
     }
 }
