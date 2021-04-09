@@ -100,9 +100,11 @@ public class StackTraceCompacter {
             if (!Strings.isNullOrEmpty(System.getProperty("stacktrace.compacter.off"))) {
                 shouldNotCompact = true;
                 collectedExceptions.clear();
-                synchronized (this) {
-                    stackTraceElements.clear();
-                }
+            } else {
+                shouldNotCompact = false;
+            }
+            synchronized (this) {
+                stackTraceElements.clear();
             }
         }
         if (shouldNotCompact) {
