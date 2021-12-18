@@ -5,19 +5,15 @@ import com.nikondsl.utils.stacktrace.utils.LimitedFrequency;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StackTraceCompacter {
+
     private static final int DEFAULT_LENGTH = 512;
+    private static final int CACHE_SIZE = 100;
     private static final AtomicInteger NUMBER_ONE = new AtomicInteger(1);
 
     private volatile static boolean shouldNotCompact = false;
@@ -43,7 +39,7 @@ public class StackTraceCompacter {
     private Throwable currentException;
     private String compactedBody;
     private final Stack<StackTraceHolder> stackTraceElements = new Stack<>();
-    private final List<ProcessorRule> allRulesToLeftExpanded = new ArrayList<>();
+    private final Set<ProcessorRule> allRulesToLeftExpanded = new LinkedHashSet<>();
     private final ConcurrentMap<Integer, AtomicInteger> collectedExceptions = new ConcurrentHashMap<>();
 
     private static class StackTraceHolder {
@@ -93,7 +89,7 @@ public class StackTraceCompacter {
         init(currentException);
     }
 
-    public void init(Throwable throwable) {
+    public String init(Throwable throwable) {
         this.currentException = throwable;
         if (limitedFrequency.isTimePassed()) {
             //check if it's turned of
@@ -108,7 +104,7 @@ public class StackTraceCompacter {
             }
         }
         if (shouldNotCompact) {
-            return;
+            return generateString(false);
         }
         synchronized (this) {
             stackTraceElements.clear();
@@ -118,6 +114,9 @@ public class StackTraceCompacter {
                 boolean noRuleMet = true;
                 for (ProcessorRule rule : allRulesToCollapse) {
                     if (!rule.processCurrentLine(canonicalName)) {
+                        continue;
+                    }
+                    if (allRulesToLeftExpanded.contains(rule)) {
                         continue;
                     }
                     if (last != null &&
@@ -144,15 +143,17 @@ public class StackTraceCompacter {
         }
         compactedBody = generateString(false);
         AtomicInteger counterOfExceptionNew = new AtomicInteger(1);
-        AtomicInteger counterOfExceptionOld = collectedExceptions.putIfAbsent(compactedBody.hashCode(), counterOfExceptionNew);
+        AtomicInteger counterOfExceptionOld = collectedExceptions.putIfAbsent(compactedBody.hashCode(),
+                counterOfExceptionNew);
         if (counterOfExceptionOld != null) {
             counterOfExceptionOld.incrementAndGet();
-            //remove everything collected, 100 is enough
-            if (collectedExceptions.size() > 100) {
-                collectedExceptions.clear();
-                collectedExceptions.put(compactedBody.hashCode(), counterOfExceptionNew);
-            }
         }
+        //remove everything collected, 100 is enough
+        if (collectedExceptions.size() > CACHE_SIZE) {
+            collectedExceptions.clear();
+            collectedExceptions.put(compactedBody.hashCode(), counterOfExceptionNew);
+        }
+        return compactedBody;
     }
 
     /**
@@ -160,7 +161,7 @@ public class StackTraceCompacter {
      * @param compactedName name of rule - will be visible in stacktrace.
      * @param rule in fact array of texts, you do not want to see expanded in stacktrace.
      */
-    public void addRuleToCollapse(String compactedName, String[] rule) {
+    public synchronized void addRuleToCollapse(String compactedName, String[] rule) {
         allRulesToCollapse.add(new ProcessorRule(compactedName, rule));
     }
 
@@ -170,12 +171,12 @@ public class StackTraceCompacter {
      * @param ruleName just name of rule, it's not used anywhere.
      * @param rule in fact array of texts, you want to see expanded in stacktracea.
      */
-    public void addRuleToBeLeftExpanded(String ruleName, String[] rule) {
+    public synchronized void addRuleToBeLeftExpanded(String ruleName, String[] rule) {
         allRulesToLeftExpanded.add(new ProcessorRule(ruleName, rule));
     }
 
-    public List<ProcessorRule> getAllRules() {
-        return Collections.unmodifiableList(allRulesToLeftExpanded);
+    public synchronized List<ProcessorRule> getAllRules() {
+        return Collections.unmodifiableList(new ArrayList<>(allRulesToLeftExpanded));
     }
 
     private static class ProcessorRule {
@@ -183,14 +184,14 @@ public class StackTraceCompacter {
         private final String compactedName;
 
         ProcessorRule(String compactedName, String rule) {
-            this.rules = new HashSet<>();
+            rules = new HashSet<>();
             rules.add(rule);
             this.compactedName = compactedName;
         }
 
-        ProcessorRule(String compactedName, String[] rules) {
-            this.rules = new HashSet<>();
-            Arrays.asList(rules).forEach(this.rules::add);
+        ProcessorRule(String compactedName, String[] newRules) {
+            rules = new HashSet<>();
+            rules.addAll(Arrays.asList(newRules));
             this.compactedName = compactedName;
         }
 
@@ -204,13 +205,23 @@ public class StackTraceCompacter {
                     "" + compactedName +
                     '}';
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ProcessorRule that = (ProcessorRule) o;
+            return Objects.equals(rules, that.rules) &&
+                    Objects.equals(compactedName, that.compactedName);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(rules, compactedName);
+        }
     }
 
-    public String generateString() {
-        return generateString(true);
-    }
-
-    private String generateString(boolean generateHeader) {
+    String generateString(boolean generateHeader) {
         if (shouldNotCompact) {
             if (currentException == null) {
                 return null;
@@ -276,7 +287,7 @@ public class StackTraceCompacter {
             while (cause != null) {
                 StackTraceCompacter innerShortener = new StackTraceCompacter(cause);
                 result.append("Caused by: \n");
-                String inner = innerShortener.generateString();
+                String inner = innerShortener.generateString(true);
                 result.append(inner);
                 if (cause == cause.getCause()) {
                     break;

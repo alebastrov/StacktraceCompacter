@@ -1,6 +1,5 @@
-package com.nikondsl.utils.stacktrace;
+package com.nikondsl.utils.stacktrace.impl;
 
-import com.nikondsl.utils.stacktrace.factory.CompacterFactory;
 import com.nikondsl.utils.stacktrace.impl.StackTraceCompacter;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +67,7 @@ public class StackTraceCompacterTest {
         Exception cause = new Exception();
         cause.setStackTrace(trace1);
         compacter = new StackTraceCompacter(cause);
-        String shortenedStacktrace = compacter.generateString();
+        String shortenedStacktrace = compacter.generateString(true);
 
         assertTrue(shortenedStacktrace.contains("com.sdl.dxa.modelservice."));
         assertFalse(shortenedStacktrace.contains("org.springframework"));
@@ -84,7 +83,7 @@ public class StackTraceCompacterTest {
         cause.setStackTrace(trace2);
         compacter = new StackTraceCompacter(cause);
         compacter.addRuleToBeLeftExpanded("SDL", new String[] {"com.sdl.", "org.dd4t."});
-        String shortenedStacktrace = compacter.generateString();
+        String shortenedStacktrace = compacter.generateString(true);
 
         assertTrue(shortenedStacktrace.contains("Tomcat"));
     }
@@ -94,7 +93,7 @@ public class StackTraceCompacterTest {
         Exception cause = new Exception();
         cause.setStackTrace(trace3);
         compacter = new StackTraceCompacter(cause);
-        String shortenedStacktrace = compacter.generateString();
+        String shortenedStacktrace = compacter.generateString(true);
 
         assertTrue(shortenedStacktrace.contains("Tomcat"));
     }
@@ -106,7 +105,7 @@ public class StackTraceCompacterTest {
             throw new IllegalArgumentException("Note", ise);
         } catch (Exception ex) {
             compacter = new StackTraceCompacter(ex);
-            System.err.println(compacter.generateString());
+            System.err.println(compacter.generateString(true));
         }
     }
 
@@ -116,7 +115,7 @@ public class StackTraceCompacterTest {
         causeFirst.setStackTrace(trace1);
         compacter = new StackTraceCompacter();
         compacter.init(causeFirst);
-        String shortenedStacktrace = compacter.generateString();
+        String shortenedStacktrace = compacter.generateString(true);
         assertTrue(shortenedStacktrace.startsWith("Here's a compacted exception ('"));
         //remember id
         Matcher matcher = Pattern.compile(".*?\\('([+-]?\\d++)'\\).*").matcher(shortenedStacktrace);
@@ -129,7 +128,7 @@ public class StackTraceCompacterTest {
         causeSecond.setStackTrace(trace1Same);
         compacter.init(causeSecond);
 
-        shortenedStacktrace = compacter.generateString();
+        shortenedStacktrace = compacter.generateString(true);
         assertTrue(shortenedStacktrace.startsWith("Exception ('" + id + "') has been thrown #2 times"));
     }
 }
